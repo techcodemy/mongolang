@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
-	"time"
 
+	"github.com/techcodemy/mongolang/connect"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -42,7 +43,7 @@ type Comment struct {
 	Cotent string             `bson:"content"`
 }
 
-func connect() (*mongo.Client, error) {
+/* func connect() (*mongo.Client, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
 		return nil, err
@@ -55,9 +56,44 @@ func connect() (*mongo.Client, error) {
 	}
 	return client, nil
 }
+*/
+const url = "mongodb://localhost:27017"
+
+func InterToByte(v interface{}) []byte {
+	b, ok := v.(*[]byte)
+	if ok {
+		return *b
+	}
+	return nil
+
+}
 
 func main() {
-	client, _ := connect()
+	client, err := connect.Cluster(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	db := connect.DataBase(client, "mongolang", "users")
+	user := struct{}{}
+	u, err := db.FindbyID("5f7ef973ef75227b2f76e007", &user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	byteS, _ := json.Marshal(&u)
+	fmt.Println("user bytes:", byteS)
+	userData := User{}
+	_ = json.Unmarshal(byteS, userData)
+	fmt.Println("user interface:", &userData)
+	/* fmt.Println("user interface:", u) */
+	/* uME := User{}
+	idNew, _ := primitive.ObjectIDFromHex("5f7ef973ef75227b2f76e007")
+	err = db.Col.FindOne(context.TODO(), bson.M{"_id": idNew}).Decode(&uME)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("user struct:", uME) */
+	//fmt.Println("user interface:", u)
+
 	// ***insert user
 	/* u, err := addUser(client)
 	if err != nil {
@@ -101,11 +137,11 @@ func main() {
 	fmt.Println("deleted a todo:\n", todos) */
 
 	//updating make as read in array by its index
-	todos, err := MarkAsDoneTodo("5f7ef973ef75227b2f76e007", 2, client)
+	/* todos, err := MarkAsDoneTodo("5f7ef973ef75227b2f76e007", 2, client)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("deleted a todo:\n", todos)
+	fmt.Println("deleted a todo:\n", todos) */
 
 }
 

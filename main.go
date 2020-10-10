@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -55,36 +54,44 @@ type Comment struct {
 		return nil, err
 	}
 	return client, nil
-}
-*/
+} */
+
 const url = "mongodb://localhost:27017"
 
-func InterToByte(v interface{}) []byte {
-	b, ok := v.(*[]byte)
-	if ok {
-		return *b
-	}
-	return nil
-
-}
-
 func main() {
+	/* connecting try connection */
+	//client, _ := connect()
+
 	client, err := connect.Cluster(url)
 	if err != nil {
 		log.Fatal(err)
 	}
 	db := connect.DataBase(client, "mongolang", "users")
-	user := struct{}{}
-	u, err := db.FindbyID("5f7ef973ef75227b2f76e007", &user)
+
+	/* // #findByID
+	res, err := db.FindOnebyID("5f7ef973ef75227b2f76e007")
+	if err != nil {
+		log.Fatal(err)
+	}*/
+	// #findOneByField
+	/* res, err := db.FindOneByField("username", "esnart")
+	if err != nil {
+		log.Fatal(err)
+	} */
+
+	// #findOne
+	res, err := db.FindOne(bson.M{"username": "esnart"})
 	if err != nil {
 		log.Fatal(err)
 	}
-	byteS, _ := json.Marshal(&u)
-	fmt.Println("user bytes:", byteS)
-	userData := User{}
-	_ = json.Unmarshal(byteS, userData)
-	fmt.Println("user interface:", &userData)
-	/* fmt.Println("user interface:", u) */
+
+	userStruct := User{}
+	bsonBytes, _ := bson.Marshal(res)
+	bson.Unmarshal(bsonBytes, &userStruct)
+
+	fmt.Println("return user:", userStruct)
+
+	//Finding one
 	/* uME := User{}
 	idNew, _ := primitive.ObjectIDFromHex("5f7ef973ef75227b2f76e007")
 	err = db.Col.FindOne(context.TODO(), bson.M{"_id": idNew}).Decode(&uME)
@@ -92,6 +99,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("user struct:", uME) */
+
 	//fmt.Println("user interface:", u)
 
 	// ***insert user

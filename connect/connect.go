@@ -38,9 +38,9 @@ func DataBase(c *mongo.Client, databaseName, collectionName string) *DB {
 	}
 }
 
-//FindOnebyID ...
+//FindbyObjectID ...
 //find by object id string
-func (db *DB) FindOnebyID(idObjectString string) (bson.M, error) {
+func (db *DB) FindbyObjectID(idObjectString string) (bson.M, error) {
 	var data bson.M
 	idNew, err := primitive.ObjectIDFromHex(idObjectString)
 	if err != nil {
@@ -80,9 +80,9 @@ func (db *DB) FindOne(filter bson.M) (bson.M, error) {
 	return data, nil
 }
 
-//FindMany ...
+//FindAll ...
 //with multiple filters using primitive.M
-func (db *DB) FindMany(filter bson.M) ([]bson.M, error) {
+func (db *DB) FindAll(filter bson.M) ([]bson.M, error) {
 	var ManyResults []bson.M
 	cursor, err := db.Col.Find(context.Background(), filter)
 	if err != nil {
@@ -116,7 +116,7 @@ func (db *DB) CreateMany(insertData []interface{}) ([]bson.M, error) {
 		IDs = append(IDs, id)
 	}
 
-	allResults, err := db.FindMany(bson.M{"_id": bson.M{"$in": IDs}})
+	allResults, err := db.FindAll(bson.M{"_id": bson.M{"$in": IDs}})
 	if err != nil {
 		return nil, err
 	}
@@ -132,15 +132,103 @@ func (db *DB) Create(insertData interface{}) (bson.M, error) {
 		return nil, err
 	}
 
-	id, err := primitive.ObjectIDFromHex(fmt.Sprintf("%v", res.InsertedID))
+	result, err := db.FindOne(bson.M{"_id": res.InsertedID})
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := db.FindOne(bson.M{"_id": id})
+	return result, nil
+}
+
+//CreateM ...
+func (db *DB) CreateM(insertData bson.M) (bson.M, error) {
+
+	res, err := db.Col.InsertOne(context.TODO(), insertData)
+	if err != nil {
+		return nil, err
+	}
+	result, err := db.FindOne(bson.M{"_id": res.InsertedID})
 	if err != nil {
 		return nil, err
 	}
 
-	return results, nil
+	return result, nil
+}
+
+//Update ...
+func (db *DB) Update(filter bson.M, updateParams bson.M) (bson.M, error) {
+	res, err := db.Col.UpdateOne(context.Background(), filter, updateParams)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := db.FindOne(bson.M{"_id": res.UpsertedID})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+//UpdateByID ...
+func (db *DB) UpdateByID(IDObject string, updateParams bson.M) (bson.M, error) {
+	idNew, _ := primitive.ObjectIDFromHex(IDObject)
+	filter := bson.M{
+		"_id": idNew,
+	}
+	res, err := db.Col.UpdateOne(context.Background(), filter, updateParams)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := db.FindOne(bson.M{"_id": res.UpsertedID})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+//UpdateMany ...
+func (db *DB) UpdateMany(filter bson.M, updateParams bson.M) (int64, error) {
+	res, err := db.Col.UpdateMany(context.Background(), filter, updateParams)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.UpsertedCount, nil
+
+}
+
+//SoftDelete ...
+func (db *DB) SoftDelete(filter bson.M) (bson.M, error) {
+	deletedAt := time.Now()
+	res, err := db.Col.UpdateOne(context.Background(), filter, bson.M{"$set": bson.M{"deleted_at": deletedAt}})
+	if err != nil {
+		return nil, err
+	}
+	result, err := db.FindOne(bson.M{"_id": res.UpsertedID})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+//Delete ...
+func (db *DB) Delete(filter bson.M) (int64, error) {
+	res, err := db.Col.DeleteOne(context.Background(), filter)
+	if err != nil {
+		return 0, err
+	}
+	return res.DeletedCount, nil
+}
+
+//DeleteMany ..
+func (db *DB) DeleteMany(filter bson.M) (int64, error) {
+	res, err := db.Col.DeleteMany(context.Background(), filter)
+	if err != nil {
+		return 0, err
+	}
+	return res.DeletedCount, nil
 }

@@ -18,7 +18,7 @@ type User struct {
 	ID       primitive.ObjectID `bson:"_id"`
 	UserName string             `bson:"username"`
 	Address  UserAddress        `bson:"address"`
-	Phone    *[]string          `bson:"phone,omitempty"`
+	Phone    []string           `bson:"phone,omitempty"`
 	Todos    []Todo             `bson:"todos,omitempty"`
 }
 
@@ -80,16 +80,77 @@ func main() {
 	} */
 
 	// #findOne
-	res, err := db.FindOne(bson.M{"username": "esnart"})
+
+	/* res, err := db.FindOne(bson.M{"_id": id})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	userStruct := User{}
+	user := User{}
 	bsonBytes, _ := bson.Marshal(res)
-	bson.Unmarshal(bsonBytes, &userStruct)
+	bson.Unmarshal(bsonBytes, &user)
+	fmt.Println(user) */
 
-	fmt.Println("return user:", userStruct)
+	// getting all
+	res, err := db.FindAll(bson.M{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	usersStruct := []User{}
+
+	for _, i := range res {
+		user := User{}
+		bsonBytes, _ := bson.Marshal(i)
+		bson.Unmarshal(bsonBytes, &user)
+
+		usersStruct = append(usersStruct, user)
+	}
+
+	fmt.Println("return user:", usersStruct)
+
+	//create using orm
+	/* u := bson.M{
+		"username": "emmunic boss",
+	} */
+
+	/* u := User{
+		ID:       primitive.NewObjectID(),
+		UserName: "user test",
+	}
+	res, err := db.Create(u)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	user := User{}
+	bsonBytes, _ := bson.Marshal(res)
+	bson.Unmarshal(bsonBytes, &user)
+	fmt.Println(user) */
+
+	/* mary := User{
+		ID:       primitive.NewObjectID(),
+		UserName: "mary",
+		Phone:    &[]string{"0945934878"},
+	}
+	bobo := User{ID: primitive.NewObjectID(), UserName: "bobo"}
+
+	res, err := db.CreateMany([]interface{}{mary, bobo})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	usersStruct := []User{}
+
+	for _, i := range res {
+		user := User{}
+		bsonBytes, _ := bson.Marshal(i)
+		bson.Unmarshal(bsonBytes, &user)
+
+		usersStruct = append(usersStruct, user)
+	}
+
+	fmt.Println("return user:", usersStruct) */
 
 	//Finding one
 	/* uME := User{}
@@ -175,7 +236,7 @@ func addManyUser(c *mongo.Client) (*[]User, error) {
 	naile := User{
 		ID:       primitive.NewObjectID(),
 		UserName: "naile",
-		Phone:    &[]string{"0945934878"},
+		Phone:    []string{"0945934878"},
 	}
 	kamuel := User{ID: primitive.NewObjectID(), UserName: "kamuel"}
 	nickolas := User{ID: primitive.NewObjectID(), UserName: "nickolas"}
@@ -199,19 +260,13 @@ func addManyUser(c *mongo.Client) (*[]User, error) {
 	}
 
 	cursor, _ := col.Find(context.Background(), bson.M{"_id": bson.M{"$in": IDs}})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer cursor.Close(context.Background())
-
 	for cursor.Next(context.Background()) {
-		u := User{}
-		err := cursor.Decode(&u)
+		singleReslut := User{}
+		err := cursor.Decode(&singleReslut)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
-		resUsers = append(resUsers, u)
+		resUsers = append(resUsers, singleReslut)
 	}
 
 	return &resUsers, nil

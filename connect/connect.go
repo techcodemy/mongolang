@@ -1,8 +1,8 @@
-package connect
+package mongo
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,21 +18,24 @@ type DB struct {
 
 //Cluster connection to our mongo cluster
 func Cluster(url string) (*mongo.Client, error) {
+
 	client, err := mongo.NewClient(options.Client().ApplyURI(url))
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err = client.Connect(ctx)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
+	//defer client.Disconnect(ctx)
+
 	return client, nil
 }
 
-//DataBase ...
-func DataBase(c *mongo.Client, databaseName, collectionName string) *DB {
+//Database ...
+func Database(c *mongo.Client, databaseName, collectionName string) *DB {
 	return &DB{
 		Col: c.Database(databaseName).Collection(collectionName),
 	}
@@ -49,7 +52,6 @@ func (db *DB) FindbyObjectID(idObjectString string) (bson.M, error) {
 
 	err = db.Col.FindOne(context.TODO(), bson.M{"_id": idNew}).Decode(&data)
 	if err != nil {
-		fmt.Println("found nothing here")
 		return nil, err
 	}
 
@@ -156,42 +158,64 @@ func (db *DB) CreateM(insertData bson.M) (bson.M, error) {
 }
 
 //Update ...
-func (db *DB) Update(filter bson.M, updateParams bson.M) (bson.M, error) {
+func (db *DB) Update(filter bson.M, updateParams bson.M) (int64, error) {
 	res, err := db.Col.UpdateOne(context.Background(), filter, updateParams)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	result, err := db.FindOne(bson.M{"_id": res.UpsertedID})
+	return res.UpsertedCount, nil
+}
+
+//ReplaceD ...
+func (db *DB) ReplaceD(filter bson.M, updateParams bson.D) (int64, error) {
+	res, err := db.Col.ReplaceOne(context.Background(), filter, updateParams)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return result, nil
+	return res.UpsertedCount, nil
+}
+
+//UpdateD ...
+func (db *DB) UpdateD(filter bson.M, updateParams bson.D) (int64, error) {
+	res, err := db.Col.UpdateOne(context.Background(), filter, updateParams)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.UpsertedCount, nil
 }
 
 //UpdateByID ...
-func (db *DB) UpdateByID(IDObject string, updateParams bson.M) (bson.M, error) {
+func (db *DB) UpdateByID(IDObject string, updateParams bson.M) (int64, error) {
 	idNew, _ := primitive.ObjectIDFromHex(IDObject)
+
 	filter := bson.M{
 		"_id": idNew,
 	}
 	res, err := db.Col.UpdateOne(context.Background(), filter, updateParams)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	result, err := db.FindOne(bson.M{"_id": res.UpsertedID})
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return res.UpsertedCount, nil
 }
 
 //UpdateMany ...
 func (db *DB) UpdateMany(filter bson.M, updateParams bson.M) (int64, error) {
 	res, err := db.Col.UpdateMany(context.Background(), filter, updateParams)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.UpsertedCount, nil
+
+}
+
+//UpdatePullMany ...
+func (db *DB) UpdatePullMany(filter bson.M, updateParams bson.M) (int64, error) {
+	res, err := db.Col.UpdateMany(context.Background(), filter, bson.M{"$pull": updateParams})
 	if err != nil {
 		return 0, err
 	}
